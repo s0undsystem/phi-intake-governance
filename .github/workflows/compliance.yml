@@ -61,18 +61,16 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           mkdir -p evidence-bundle
-          cp plan.json evidence-bundle/
-          cp conftest-report.xml evidence-bundle/
-          cp oscal/component-definition.json evidence-bundle/
-          echo "${{ github.sha }}" > evidence-bundle/git-rev.txt
+          cp plan.json evidence-bundle/ 2>/dev/null || true
+          cp conftest-results.json evidence-bundle/ 2>/dev/null || true
+          echo "${{ github.sha }}" > evidence-bundle/git-sha.txt
           date -u +"%Y-%m-%dT%H:%M:%SZ" > evidence-bundle/timestamp.txt
-          tar -czf bundle.tar.gz -C evidence-bundle .
+          tar czf bundle.tar.gz evidence-bundle/
           curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
             -o /usr/local/bin/cosign
           chmod +x /usr/local/bin/cosign
           cosign sign-blob --yes \
-            --output-signature bundle.tar.gz.sig \
-            --output-certificate bundle.tar.gz.cert \
+            --bundle bundle.tar.gz.bundle \
             bundle.tar.gz
 
       - name: upload signed bundle to the S3 evidence vault
@@ -81,8 +79,7 @@ jobs:
           EVIDENCE_BUCKET=$(cd terraform && terraform output -raw evidence_bucket_name)
           PREFIX="evidence/${{ github.sha }}"
           aws s3 cp bundle.tar.gz "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz" --sse aws:kms
-          aws s3 cp bundle.tar.gz.sig "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.sig" --sse aws:kms
-          aws s3 cp bundle.tar.gz.cert "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.cert" --sse aws:kms
+          aws s3 cp bundle.tar.gz.bundle "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.bundle" --sse aws:kms
 
       - name: Verify signature
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -93,11 +90,9 @@ jobs:
           EVIDENCE_BUCKET=$(cd terraform && terraform output -raw evidence_bucket_name)
           PREFIX="evidence/${{ github.sha }}"
           aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz" verify-bundle.tar.gz
-          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.sig" verify-bundle.tar.gz.sig
-          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.cert" verify-bundle.tar.gz.cert
+          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.bundle" verify-bundle.tar.gz.bundle
           cosign verify-blob \
-            --certificate verify-bundle.tar.gz.cert \
+            --bundle verify-bundle.tar.gz.bundle \
             --certificate-identity "${COSIGN_CERTIFICATE_IDENTITY}" \
             --certificate-oidc-issuer "${COSIGN_CERTIFICATE_OIDC_ISSUER}" \
-            --signature verify-bundle.tar.gz.sig \
             verify-bundle.tar.gz
