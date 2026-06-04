@@ -1,4 +1,4 @@
-# cgep-app-starter
+# phi intake governance
 
 > Patient Intake API for "Acme Health". The deliberately-flawed workload your **CGE-P capstone** wraps with GRC controls.
 
