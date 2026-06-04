@@ -1,8 +1,14 @@
 # Terraform
-.terraform/
-.terraform.lock.hcl
+**/.terraform/
 *.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
 *.tfstate.*
+.terraform.lock.hcl
+plan.out
+plan.json
+override.tf
+override.tf.json
 *.tfvars
 !terraform.tfvars.example
 tfplan
@@ -12,6 +18,23 @@ crash.log
 # Lambda build
 terraform/lambda/handler.zip
 
-# Local
+# Evidence bundles
+*.tar.gz
+*.sig
+*.pem
 evidence/
+conftest-report.xml
+*.cert
+
+# Environment
+.env
+.envrc
+*.env
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc

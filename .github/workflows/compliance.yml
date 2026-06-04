@@ -1,0 +1,99 @@
+name: Compliance Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_IN_AUTOMATION: true
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: terraform plan
+        run: |
+          cd terraform
+          terraform init -input=false
+          terraform plan -out=plan.out -no-color | tee plan.txt
+          terraform show -json plan.out > ../plan.json
+
+      - name: conftest policy check
+        run: |
+          curl -sSL https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz \
+            | tar xz -C /usr/local/bin conftest
+          conftest test plan.json --output junit > conftest-report.xml
+          conftest test plan.json
+
+      - name: terraform apply on merge to main
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          cd terraform
+          terraform apply -auto-approve plan.out
+          terraform output -json > ../terraform-outputs.json
+
+      - name: cosign keyless sign of the evidence bundle via GitHub OIDC
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          mkdir -p evidence-bundle
+          cp plan.json evidence-bundle/
+          cp conftest-report.xml evidence-bundle/
+          cp oscal/component-definition.json evidence-bundle/
+          echo "${{ github.sha }}" > evidence-bundle/git-rev.txt
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > evidence-bundle/timestamp.txt
+          tar -czf bundle.tar.gz -C evidence-bundle .
+          curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+            -o /usr/local/bin/cosign
+          chmod +x /usr/local/bin/cosign
+          cosign sign-blob --yes \
+            --output-signature bundle.tar.gz.sig \
+            --output-certificate bundle.tar.gz.cert \
+            bundle.tar.gz
+
+      - name: upload signed bundle to the S3 evidence vault
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          EVIDENCE_BUCKET=$(cd terraform && terraform output -raw evidence_bucket_name)
+          PREFIX="evidence/${{ github.sha }}"
+          aws s3 cp bundle.tar.gz "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz" --sse aws:kms
+          aws s3 cp bundle.tar.gz.sig "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.sig" --sse aws:kms
+          aws s3 cp bundle.tar.gz.cert "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.cert" --sse aws:kms
+
+      - name: Verify signature
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          COSIGN_CERTIFICATE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/compliance.yml@refs/heads/main
+          COSIGN_CERTIFICATE_OIDC_ISSUER: https://token.actions.githubusercontent.com
+        run: |
+          EVIDENCE_BUCKET=$(cd terraform && terraform output -raw evidence_bucket_name)
+          PREFIX="evidence/${{ github.sha }}"
+          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz" verify-bundle.tar.gz
+          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.sig" verify-bundle.tar.gz.sig
+          aws s3 cp "s3://${EVIDENCE_BUCKET}/${PREFIX}/bundle.tar.gz.cert" verify-bundle.tar.gz.cert
+          cosign verify-blob \
+            --certificate verify-bundle.tar.gz.cert \
+            --certificate-identity "${COSIGN_CERTIFICATE_IDENTITY}" \
+            --certificate-oidc-issuer "${COSIGN_CERTIFICATE_OIDC_ISSUER}" \
+            --signature verify-bundle.tar.gz.sig \
+            verify-bundle.tar.gz

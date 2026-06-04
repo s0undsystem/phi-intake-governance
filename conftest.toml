@@ -1,0 +1,17 @@
+# conftest.toml — Patient Intake API compliance policy suite
+#
+# Expected input: Terraform plan JSON (terraform show -json plan.out)
+# Policy unit tests: opa test $(find policies -name '*.rego') policies/testdata/
+# Plan evaluation: conftest test plan.json (from repo root)
+#
+# Namespace convention: all Rego policies use the compliance.hipaa.* hierarchy
+# (e.g. compliance.hipaa.encryption.s3_sse_kms). Conftest evaluates all packages
+# under policies/ because sub-package namespaces are not filtered here.
+
+policy = "policies"
+
+# Evaluate all compliance.hipaa.* sub-packages (Conftest default namespace is "main").
+all-namespaces = true
+
+# Treat warnings as failures in CI and local runs.
+fail-on-warn = true

@@ -1,4 +1,4 @@
-.PHONY: deploy plan test destroy fmt creds
+.PHONY: deploy plan plan-out conftest opa-test test destroy fmt creds
 
 # Set AWS_PROFILE in your shell before running, or pass on the command line:
 #   make deploy AWS_PROFILE=my-sandbox
@@ -8,11 +8,21 @@ AWS_PROFILE ?= default
 # read the profile directly. Export credentials into env vars first.
 CREDS = eval "$$(aws configure export-credentials --profile $(AWS_PROFILE) --format env)"
 
-deploy: ## Deploy the starter (terraform init + apply)
-	@$(CREDS) && cd terraform && terraform init -input=false && terraform apply -auto-approve
+deploy: ## Deploy workload + GRC baseline (terraform init + apply)
+	@$(CREDS) && cd terraform && terraform init && terraform apply -auto-approve
 
-plan: ## Show what deploy would do
-	@$(CREDS) && cd terraform && terraform init -input=false && terraform plan
+plan: ## Plan and export JSON for Conftest
+	@$(CREDS) && cd terraform && terraform init && \
+		terraform plan -out=plan.out && \
+		terraform show -json plan.out > ../plan.json
+
+plan-out: plan ## Alias for plan with JSON export
+
+conftest: ## Run OPA policy suite against plan.json (reads conftest.toml)
+	conftest test plan.json
+
+opa-test: ## Run Rego unit tests
+	opa test $$(find policies -name '*.rego') policies/testdata/
 
 test: ## Smoke test the deployed API
 	@$(CREDS) && cd terraform && API_URL=$$(terraform output -raw api_url) && \

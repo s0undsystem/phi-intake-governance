@@ -24,3 +24,18 @@ output "vpc_id" {
 output "private_subnet_ids" {
   value = aws_subnet.private[*].id
 }
+
+output "kms_key_arn" {
+  value       = module.grc_baseline.kms_key_arn
+  description = "Customer-managed KMS key ARN for PHI data stores."
+}
+
+output "evidence_bucket_name" {
+  value       = module.grc_baseline.evidence_bucket_name
+  description = "S3 evidence vault bucket for signed compliance artifacts."
+}
+
+output "cloudtrail_arn" {
+  value       = module.grc_baseline.cloudtrail_arn
+  description = "Multi-region CloudTrail trail ARN."
+}

@@ -111,8 +111,10 @@ resource "aws_dynamodb_table" "intake" {
     type = "S"
   }
 
-  # No server_side_encryption block. Defaults to AWS-owned key.
-  # GAP-02: capstone learner expected to add this with a customer-owned key.
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = module.grc_baseline.kms_key_arn
+  }
 }
 
 ######################################################################
@@ -167,26 +169,9 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# GAP-07: deliberately broad permissions on the workload data stores.
-resource "aws_iam_role_policy" "lambda_inline" {
-  name = "intake-data-access"
-  role = aws_iam_role.lambda.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = "dynamodb:*"
-        Resource = aws_dynamodb_table.intake.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "s3:*"
-        Resource = ["${aws_s3_bucket.uploads.arn}", "${aws_s3_bucket.uploads.arn}/*"]
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "lambda_vpc" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_lambda_function" "intake" {
@@ -205,8 +190,10 @@ resource "aws_lambda_function" "intake" {
     }
   }
 
-  # GAP-05: no vpc_config block. Learner expected to add one referencing
-  # aws_subnet.private[*] and a hardened security group.
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [module.grc_baseline.lambda_security_group_id]
+  }
 }
 
 ######################################################################

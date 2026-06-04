@@ -1,0 +1,246 @@
+{
+  "component-definition": {
+    "uuid": "a3f7c2e1-8b4d-4f9a-9e2c-1d5b6a7c8e9f",
+    "metadata": {
+      "title": "Patient Intake API — Component Definition",
+      "last-modified": "2026-06-04T00:00:00Z",
+      "version": "1.0.0",
+      "oscal-version": "1.1.2",
+      "roles": [
+        {
+          "id": "provider",
+          "title": "Provider",
+          "description": "Organization operating the Patient Intake API."
+        }
+      ],
+      "parties": [
+        {
+          "uuid": "b4e8d3f2-9c5e-4a0b-8f3d-2e6c7d8e9f0a",
+          "type": "organization",
+          "name": "Acme Health"
+        }
+      ]
+    },
+    "components": [
+      {
+        "uuid": "c5f9e4a3-0d6f-4b1c-9e4f-3f7a8b9c0d1e",
+        "type": "software",
+        "title": "Patient Intake API",
+        "description": "Acme Health PHI intake workload: API Gateway HTTP API, Lambda handler, DynamoDB submissions table, and S3 uploads bucket. Wrapped with GRC baseline controls for HIPAA Security Rule compliance.",
+        "props": [
+          {
+            "name": "primary-framework",
+            "value": "HIPAA Security Rule via NIST SP 800-66 Rev. 2"
+          },
+          {
+            "name": "data-classification",
+            "value": "phi"
+          }
+        ],
+        "control-implementations": [
+          {
+            "uuid": "d6a0f5b4-1e70-4c2d-0f50-4a8b9c0d1e2f",
+            "source": "https://csrc.nist.gov/Projects/risk-management/sp800-66-rev2",
+            "description": "HIPAA Security Rule safeguards implemented for the Patient Intake API per NIST SP 800-66 Rev. 2 guidance.",
+            "implemented-requirements": [
+              {
+                "uuid": "e7b1a6c5-2f80-4d3e-1a60-5b9c0d1e2f3a",
+                "control-id": "164.312(a)(2)(iv)",
+                "description": "Encryption at rest for PHI data stores using a customer-managed KMS key with SSE-KMS on S3 and DynamoDB.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_kms_key.phi"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_s3_bucket_server_side_encryption_configuration.uploads"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_dynamodb_table.intake"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/s3_sse_kms.rego"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/dynamodb_cmk.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "CC6.1"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "SC.L2-3.13.11"
+                  }
+                ]
+              },
+              {
+                "uuid": "f8c2b7d6-3a90-4e4f-2b70-6c0d1e2f3a4b",
+                "control-id": "164.312(a)(1)",
+                "description": "Least-privilege IAM for Lambda data access scoped to handler-required actions only.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_iam_role_policy.lambda_data_access"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/iam_least_privilege.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "CC6.3"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "AC.L2-3.1.5"
+                  }
+                ]
+              },
+              {
+                "uuid": "a9d3c8e7-4b00-4f5a-3c80-7d1e2f3a4b5c",
+                "control-id": "164.312(e)(1)",
+                "description": "Transmission security via S3 TLS-enforcing bucket policy and Lambda VPC boundary placement.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_s3_bucket_policy.uploads"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_lambda_function.intake"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/s3_tls_enforcement.rego"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/lambda_vpc.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "CC6.7"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "SC.L2-3.13.8"
+                  }
+                ]
+              },
+              {
+                "uuid": "b0e4d9f8-5c10-4a6b-4d90-8e2f3a4b5c6d",
+                "control-id": "164.308(a)(7)",
+                "description": "Contingency planning support through S3 versioning on the PHI uploads bucket.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_s3_bucket_versioning.uploads"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/s3_versioning.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "A1.2"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "MP.L2-3.8.9"
+                  }
+                ]
+              },
+              {
+                "uuid": "c1f5e0a9-6d20-4b7c-5e00-9f3a4b5c6d7e",
+                "control-id": "164.312(b)",
+                "description": "Audit controls via multi-region CloudTrail with log file validation and S3 data events.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_cloudtrail.phi"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/cloudtrail_audit.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "CC7.2"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "AU.L2-3.3.1"
+                  }
+                ]
+              },
+              {
+                "uuid": "d2a6f1b0-7e30-4c8d-6f10-0a4b5c6d7e8f",
+                "control-id": "164.312(e)(1)",
+                "description": "Network boundary protection: Lambda in private subnets, egress-only security group, VPC endpoints, and NAT for residual HTTPS.",
+                "props": [
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_security_group.lambda"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_vpc_endpoint.s3"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_vpc_endpoint.dynamodb"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "module.grc_baseline.aws_vpc_endpoint.logs"
+                  },
+                  {
+                    "name": "policy",
+                    "value": "policies/lambda_vpc.rego"
+                  },
+                  {
+                    "name": "evidence-uri-prefix",
+                    "value": "s3://acme-health-intake-evidence-*/evidence/"
+                  },
+                  {
+                    "name": "soc2-tsc",
+                    "value": "CC6.6"
+                  },
+                  {
+                    "name": "cmmc-l2",
+                    "value": "SC.L2-3.13.1"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "compliant": {
+    "format_version": "1.2",
+    "planned_values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_dynamodb_table.intake",
+            "mode": "managed",
+            "type": "aws_dynamodb_table",
+            "name": "intake",
+            "values": {
+              "server_side_encryption": [
+                {
+                  "enabled": true,
+                  "kms_key_arn": "arn:aws:kms:us-east-1:123456789012:key/abc-123"
+                }
+              ]
+            }
+          },
+          {
+            "address": "aws_lambda_function.intake",
+            "mode": "managed",
+            "type": "aws_lambda_function",
+            "name": "intake",
+            "values": {
+              "vpc_config": [
+                {
+                  "subnet_ids": ["subnet-private-a", "subnet-private-b"],
+                  "security_group_ids": ["sg-lambda"]
+                }
+              ]
+            }
+          },
+          {
+            "address": "module.grc_baseline.aws_iam_role_policy.lambda_data_access",
+            "mode": "managed",
+            "type": "aws_iam_role_policy",
+            "name": "lambda_data_access",
+            "values": {
+              "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:PutItem\",\"dynamodb:DescribeTable\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:123456789012:table/acme-health-intake-submissions-deadbeef\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::acme-health-intake-uploads-deadbeef/uploads/*\"},{\"Effect\":\"Allow\",\"Action\":[\"kms:Decrypt\",\"kms:GenerateDataKey\"],\"Resource\":\"arn:aws:kms:us-east-1:123456789012:key/abc-123\"}]}"
+            }
+          }
+        ],
+        "child_modules": [
+          {
+            "address": "module.grc_baseline",
+            "resources": [
+              {
+                "address": "module.grc_baseline.aws_s3_bucket_server_side_encryption_configuration.uploads",
+                "mode": "managed",
+                "type": "aws_s3_bucket_server_side_encryption_configuration",
+                "name": "uploads",
+                "values": {
+                  "rule": [
+                    {
+                      "apply_server_side_encryption_by_default": [
+                        {
+                          "sse_algorithm": "aws:kms",
+                          "kms_master_key_id": "arn:aws:kms:us-east-1:123456789012:key/abc-123"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "address": "module.grc_baseline.aws_s3_bucket_versioning.uploads",
+                "mode": "managed",
+                "type": "aws_s3_bucket_versioning",
+                "name": "uploads",
+                "values": {
+                  "versioning_configuration": [
+                    {
+                      "status": "Enabled"
+                    }
+                  ]
+                }
+              },
+              {
+                "address": "module.grc_baseline.aws_s3_bucket_policy.uploads",
+                "mode": "managed",
+                "type": "aws_s3_bucket_policy",
+                "name": "uploads",
+                "values": {
+                  "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DenyInsecureTransport\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::acme-health-intake-uploads-deadbeef\",\"arn:aws:s3:::acme-health-intake-uploads-deadbeef/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}}]}"
+                }
+              },
+              {
+                "address": "module.grc_baseline.aws_cloudtrail.phi",
+                "mode": "managed",
+                "type": "aws_cloudtrail",
+                "name": "phi",
+                "values": {
+                  "is_multi_region_trail": true,
+                  "enable_log_file_validation": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "resource_changes": []
+  },
+  "starter_gap": {
+    "format_version": "1.2",
+    "planned_values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_dynamodb_table.intake",
+            "mode": "managed",
+            "type": "aws_dynamodb_table",
+            "name": "intake",
+            "values": {}
+          },
+          {
+            "address": "aws_lambda_function.intake",
+            "mode": "managed",
+            "type": "aws_lambda_function",
+            "name": "intake",
+            "values": {}
+          },
+          {
+            "address": "aws_iam_role_policy.lambda_inline",
+            "mode": "managed",
+            "type": "aws_iam_role_policy",
+            "name": "lambda_inline",
+            "values": {
+              "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"dynamodb:*\",\"Resource\":\"arn:aws:dynamodb:us-east-1:123456789012:table/acme-health-intake-submissions-deadbeef\"},{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::acme-health-intake-uploads-deadbeef\",\"arn:aws:s3:::acme-health-intake-uploads-deadbeef/*\"]}]}"
+            }
+          },
+          {
+            "address": "aws_s3_bucket.uploads",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "uploads",
+            "values": {}
+          }
+        ]
+      }
+    },
+    "resource_changes": []
+  }
+}

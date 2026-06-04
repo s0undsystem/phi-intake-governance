@@ -1,0 +1,41 @@
+{
+  "profile": {
+    "uuid": "3e8f1a2b-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "metadata": {
+      "title": "HIPAA Patient Intake API Profile",
+      "last-modified": "2026-06-04T00:00:00Z",
+      "version": "1.0.0",
+      "oscal-version": "1.1.2",
+      "props": [
+        {
+          "name": "primary-framework",
+          "value": "HIPAA Security Rule"
+        },
+        {
+          "name": "catalog-source",
+          "value": "NIST SP 800-66 Rev. 2"
+        },
+        {
+          "name": "secondary-crosswalk",
+          "value": "SOC 2 TSC and CMMC L2 mappings documented in component-definition props and policies/crosswalk.md"
+        }
+      ]
+    },
+    "imports": [
+      {
+        "href": "https://csrc.nist.gov/Projects/risk-management/sp800-66-rev2"
+      }
+    ],
+    "modify": {
+      "include-controls": {
+        "with-ids": [
+          "164.312(a)(1)",
+          "164.312(a)(2)(iv)",
+          "164.312(b)",
+          "164.312(e)(1)",
+          "164.308(a)(7)"
+        ]
+      }
+    }
+  }
+}
